@@ -1,11 +1,47 @@
+# Question 2
 
+library(mice)
 
+# Load the data
+load("E:/dataex2.Rdata")
 
+# Set seed and parameters
+set.seed(1)
+M <- 20
 
+# Initialize matrices for confidence intervals
+CI_stochastic <- CI_bootstrap <- matrix(NA, nrow = dim(dataex2)[3], ncol = 2)
+
+# Function to perform imputation and calculate CI
+perform_imputation <- function(data, method) {
+  imp <- mice(data, m = M, method = method, printFlag = FALSE)
+  fit <- with(imp, lm(y ~ x))
+  pool_fit <- pool(fit)
+  summary_fit <- summary(pool_fit, conf.int = TRUE)
+  as.numeric(summary_fit[2, c("2.5 %", "97.5 %")])
+}
+
+# Calculate coverage probability
+calculate_coverage <- function(CI, true_value) {
+  sum(CI[, 1] <= true_value & CI[, 2] >= true_value) / nrow(CI)
+}
+
+# Process each dataset
+for (i in 1:100) {
+  data_i <- dataex2[, , i]
+  colnames(data_i) <- c("x", "y")
+  CI_stochastic[i, ] <- perform_imputation(data_i, "norm")
+  CI_bootstrap[i, ] <- perform_imputation(data_i, "norm.boot")
+}
+
+# Calculate and print results
+cat("Stochastic Regression Coverage:", calculate_coverage(CI_stochastic, 3), "\n",
+    "Bootstrap-Based Coverage:", calculate_coverage(CI_bootstrap, 3), "\n")
 
 
 # Question 3
-
+install.packages("maxLik")
+library(maxLik)
 load("E:/dataex3.Rdata")
 
 # Define the log-likelihood function
