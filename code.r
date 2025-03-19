@@ -1,45 +1,40 @@
 # Question 2
-
 library(mice)
 
-# Load the data
+# Load data
 load("E:/dataex2.Rdata")
 
-# Set seed and parameters
-set.seed(1)
+# Number of imputations and iterations
 M <- 20
+num_iter <- 100
 
-# Initialize matrices for confidence intervals
-CI_stochastic <- CI_bootstrap <- matrix(NA, nrow = dim(dataex2)[3], ncol = 2)
+# Initialize confidence interval matrices
+CI_stochastic <- CI_bootstrap <- matrix(NA, nrow = num_iter, ncol = 2)
 
-# Function to perform imputation and calculate CI
-perform_imputation <- function(data, method) {
-  imp <- mice(data, m = M, method = method, printFlag = FALSE)
+# Function to perform multiple imputation and extract confidence intervals
+impute_and_extract_CI <- function(data, method) {
+  imp <- mice(data, m = M, seed = 1, method = method, printFlag = FALSE)
   fit <- with(imp, lm(y ~ x))
-  pool_fit <- pool(fit)
-  summary_fit <- summary(pool_fit, conf.int = TRUE)
-  as.numeric(summary_fit[2, c("2.5 %", "97.5 %")])
+  pool_summary <- summary(pool(fit), conf.int = TRUE)
+  return(as.numeric(pool_summary[2, c("2.5 %", "97.5 %")]))
 }
 
-# Calculate coverage probability
-calculate_coverage <- function(CI, true_value) {
-  sum(CI[, 1] <= true_value & CI[, 2] >= true_value) / nrow(CI)
-}
-
-# Process each dataset
-for (i in 1:100) {
+# Run imputations
+for (i in 1:num_iter) {
   data_i <- dataex2[, , i]
   colnames(data_i) <- c("x", "y")
-  CI_stochastic[i, ] <- perform_imputation(data_i, "norm")
-  CI_bootstrap[i, ] <- perform_imputation(data_i, "norm.boot")
+  CI_stochastic[i, ] <- impute_and_extract_CI(data_i, "norm")
+  CI_bootstrap[i, ] <- impute_and_extract_CI(data_i, "norm.boot")
 }
 
-# Calculate and print results
-cat("Stochastic Regression Coverage:", calculate_coverage(CI_stochastic, 3), "\n",
-    "Bootstrap-Based Coverage:", calculate_coverage(CI_bootstrap, 3), "\n")
+# Compute empirical coverage probabilities
+coverage_rate <- function(CI) mean(CI[, 1] <= 3 & CI[, 2] >= 3)
+
+cat("Empirical Coverage Probability (Stochastic Regression Imputation):", coverage_rate(CI_stochastic), "\n")
+cat("Empirical Coverage Probability (Bootstrap-Based Imputation):", coverage_rate(CI_bootstrap), "\n")
 
 
-# Question 3
+#Question 3
 install.packages("maxLik")
 library(maxLik)
 load("E:/dataex3.Rdata")
@@ -70,7 +65,7 @@ mle_mu <- result$estimate
 cat("Maximum Likelihood Estimate of mu:", mle_mu, "\n") 
 
 
-# Question 5
+#Question 5
 
 # Load the dataset
 load("E:/dataex5.Rdata")
